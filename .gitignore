@@ -1,0 +1,118 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Cursor
+.cursor/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Output directories
+output/
+results/
+baselines/
+output/temp/
+*.json
+*.csv
+*.parquet
+
+# Model cache
+.cache/
+.cache
+models/
+*.pt
+*.pth
+*.bin
+*.safetensors
+huggingface/
+
+# Data files
+data/
+datasets/
+*.pkl
+*.pickle
+
+# Colab
+*.ipynb_checkpoints/
+colab/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Documentation builds
+docs/_build/
+site/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.pyc
+*.pyo
+*.pyd
+.Python
+
