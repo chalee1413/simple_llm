@@ -165,6 +165,70 @@ Methodology and rationale for algorithm selection in the LLM Evaluation Framewor
 
 **Alternatives**: Simple comparison (no statistical validation), Regression testing (different approach), A/B testing (more complex)
 
+## RLHF (Reinforcement Learning from Human Feedback)
+
+### PPO (Proximal Policy Optimization)
+
+**Algorithm**: Policy optimization using reward model and KL divergence penalty.
+
+**Methodology**:
+1. Train SFT model on instruction-following data
+2. Train reward model on human preferences
+3. Optimize policy using PPO algorithm
+4. Apply KL divergence penalty for stability
+
+**Formula**:
+- Policy loss: L_clip = E[min(r_t * A_t, clip(r_t, 1-epsilon, 1+epsilon) * A_t)]
+- Value loss: L_vf = (V_theta(s) - V_target)^2
+- Entropy bonus: L_ent = -E[log pi_theta(a|s)]
+- KL penalty: L_kl = beta * KL(pi_theta || pi_ref)
+- Total loss: L = L_clip + c_vf * L_vf - c_ent * L_ent + L_kl
+
+**References**:
+- Schulman, J., Wolski, F., Dhariwal, P., et al. (2017). Proximal Policy Optimization Algorithms. https://arxiv.org/abs/1707.06347
+
+**Rationale**: Stable training with KL penalty, handles complex reward functions, proven effective for language model alignment, standard in production RLHF systems.
+
+**Alternatives**: A2C (less stable), TRPO (more complex), DPO (direct optimization, no reward model)
+
+### DPO (Direct Preference Optimization)
+
+**Algorithm**: Direct policy optimization on preference data without separate reward model.
+
+**Methodology**:
+1. Train SFT model on instruction-following data
+2. Optimize policy directly on preference data
+3. No separate reward model required
+
+**Formula**:
+- DPO loss: L_dpo = -log(sigma(beta * (log pi_theta(y_w|x) - log pi_ref(y_w|x) - log pi_theta(y_l|x) + log pi_ref(y_l|x))))
+- Where: y_w = chosen response, y_l = rejected response, beta = temperature parameter
+
+**References**:
+- Rafailov, R., Sharma, A., Mitchell, E., et al. (2024). Direct Preference Optimization: Your Language Model is Secretly a Reward Model. https://arxiv.org/abs/2305.18290
+
+**Rationale**: Simpler pipeline without reward model, faster training, direct optimization on preferences, proven effective for language model alignment.
+
+**Alternatives**: PPO (requires reward model), RLHF with reward model (more complex), Supervised fine-tuning only (no preference alignment)
+
+### Reward Model Training
+
+**Algorithm**: Train reward model on pairwise preference comparisons.
+
+**Methodology**:
+1. Collect human preferences (chosen vs rejected responses)
+2. Format as pairwise comparisons
+3. Train reward model to predict preferences
+4. Use for PPO training
+
+**Formula**:
+- Reward loss: L_reward = -log(sigma(r_theta(y_w|x) - r_theta(y_l|x)))
+- Where: y_w = chosen response, y_l = rejected response, r_theta = reward model
+
+**Rationale**: Captures human preferences, enables reward-based optimization, standard in RLHF pipelines, validated in research.
+
+**Alternatives**: Direct preference optimization (DPO), Human evaluation (more expensive), Automated reward signals (less aligned)
+
 ## Implementation Details
 
 ### Formulas

@@ -16,6 +16,7 @@ Complete evaluation pipeline for LLMs covering RAG systems, model compression, s
 - **Safety Assessment**: Toxicity detection, adversarial testing, prompt injection detection
 - **Quality Metrics**: Code quality assessment (McCabe, cognitive complexity)
 - **LLM-as-Judge**: Statistical significance testing with paired comparisons
+- **RLHF Pipeline**: Complete reinforcement learning from human feedback (SFT, reward model, PPO/DPO)
 - **Baseline Tracking**: Version comparison and improvement metrics over time
 - **Vector Search Benchmarking**: Comprehensive comparison (FAISS, Qdrant, Chroma, PostgreSQL+pgvector)
 - **Statistical Rigor**: Bootstrap confidence intervals, paired t-tests, effect size calculation
@@ -41,6 +42,7 @@ The framework consists of multiple evaluation components working together:
 - **Safety Evaluation**: Toxicity detection and adversarial testing
 - **Quality Evaluation**: Code quality assessment (McCabe, cognitive complexity)
 - **LLM-as-Judge**: Statistical significance testing with paired comparisons
+- **RLHF Pipeline**: Complete RLHF pipeline (SFT, reward model, PPO/DPO) with small laptop compatibility
 - **Statistical Testing**: Bootstrap confidence intervals, paired t-tests
 - **Baseline Tracking**: Version comparison and improvement metrics
 - **Vector Search Benchmarking**: Comprehensive comparison across libraries, databases, and RDBMS
@@ -102,6 +104,16 @@ Comprehensive vector search benchmarking:
 - Feature comparison: Metadata filtering, persistence, ACID transactions
 - Multiple solutions: FAISS, NumPy, Scikit-learn, Qdrant, Chroma, PostgreSQL+pgvector
 - Visualization: Generate charts and dashboards (PNG/PDF)
+
+### rlhf_pipeline.py
+
+Complete RLHF pipeline script:
+- Supervised Fine-Tuning (SFT): Instruction-following model training
+- Reward Model Training: Human preference learning for PPO
+- PPO Training: Policy optimization with reward model
+- DPO Training: Direct preference optimization (alternative to PPO)
+- Small Laptop Compatible: Lightweight models (gpt2, distilgpt2)
+- Configuration-based: Edit configuration section to customize
 
 ### visualize_benchmarks.py
 
@@ -228,12 +240,30 @@ python visualize_benchmarks.py --input output/vector_search_benchmark_*.csv --fo
 python visualize_benchmarks.py --input output/vector_search_benchmark_*.csv --format both
 ```
 
+### RLHF Pipeline
+
+```bash
+# Full pipeline (edit configuration in rlhf_pipeline.py first)
+python rlhf_pipeline.py
+
+# Run examples
+python examples/example_rlhf.py
+```
+
+Configuration: Edit the configuration section in `rlhf_pipeline.py`:
+- `PIPELINE_STAGE`: 'sft', 'reward', 'ppo', 'dpo', or 'full'
+- `MODEL_NAME`: Model name (default: gpt2 for small laptop compatibility)
+- `RLHF_ALGORITHM`: 'ppo' or 'dpo'
+
+See [RLHF.md](docs/RLHF.md) for complete documentation.
+
 ## Documentation
 
 - [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) - Architecture decisions and technology stack
 - [METHODOLOGY.md](docs/METHODOLOGY.md) - Algorithm selection and research citations
 - [DATA_STRATEGY.md](docs/DATA_STRATEGY.md) - Data source selection and model criteria
 - [CHALLENGES.md](docs/CHALLENGES.md) - Technical challenges and solutions
+- [RLHF.md](docs/RLHF.md) - RLHF pipeline documentation (SFT, reward model, PPO/DPO)
 - [VECTOR_SEARCH_COMPARISON.md](docs/VECTOR_SEARCH_COMPARISON.md) - FAISS vs Qdrant vs Chroma vs PostgreSQL+pgvector benchmarks
 - [EXAMPLES.md](docs/EXAMPLES.md) - Real-world use cases and examples
 - [TUTORIAL.md](docs/TUTORIAL.md) - Step-by-step tutorial guide
@@ -246,6 +276,7 @@ See `examples/` directory for complete scripts and notebooks:
 - `example_model_comparison.py` - Model comparison with statistical validation
 - `example_baseline_tracking.py` - Baseline tracking for production monitoring
 - `example_vector_search.py` - Vector search benchmark example
+- `example_rlhf.py` - Complete RLHF pipeline example
 
 Run examples:
 
@@ -270,6 +301,7 @@ Implements 2025 SoTA approaches:
 - **RAGAs Framework**: RAG evaluation metrics (faithfulness, answer relevancy, context precision/recall)
 - **Statistical Rigor**: Bootstrap confidence intervals and paired t-tests
 - **LLM-as-Judge**: Evaluation methodology with statistical significance testing
+- **RLHF Pipeline**: Complete RLHF pipeline (SFT, reward model, PPO/DPO) with small laptop compatibility
 - **Baseline Tracking**: Comparison and improvement metrics over time
 - **Vector Search Benchmarking**: Comprehensive comparison across libraries, databases, and RDBMS
 - **Enterprise Integration**: AWS Bedrock and OpenAI API with error handling
@@ -285,7 +317,15 @@ llm/
 ├── llm_evaluation_demo.py   # Evaluation script
 ├── vector_search_comparison.py # Vector search benchmarks
 ├── visualize_benchmarks.py  # Visualization script
+├── rlhf_pipeline.py        # RLHF pipeline script
 ├── docker-compose.yml       # PostgreSQL + pgvector setup
+├── rlhf/                    # RLHF module
+│   ├── data_preprocessing.py
+│   ├── supervised_finetuning.py
+│   ├── preference_collection.py
+│   ├── reward_model.py
+│   ├── ppo_trainer.py
+│   └── dpo_trainer.py
 ├── utils/
 │   ├── evaluation_metrics.py    # RAGAs metrics
 │   ├── statistical_testing.py   # Statistical utilities
@@ -300,9 +340,15 @@ llm/
 
 - Python 3.11+
 - Virtual environment (recommended)
-- Memory: 4GB+ available RAM (8GB+ recommended for LLM-as-Judge)
+- Memory: 4GB+ available RAM (8GB+ recommended for LLM-as-Judge, RLHF)
 - Optional: API keys for OpenAI or AWS Bedrock
 - Optional: Docker (for PostgreSQL + pgvector benchmarking)
+
+### RLHF Requirements
+
+- Small Laptop Compatible: Default models (gpt2, distilgpt2) work on 4GB+ RAM
+- Configuration-based: Edit configuration section in `rlhf_pipeline.py` to customize
+- No API keys required: Uses open-source models from HuggingFace
 
 ## Known Issues and Limitations
 
@@ -351,4 +397,6 @@ MIT License - see LICENSE file for details.
 - RAGAs: Retrieval-Augmented Generation Assessment (2024). Es et al. https://arxiv.org/abs/2312.10997
 - LLM-as-Judge: Zheng et al. (2024). Judging LLM-as-a-judge with MT-Bench and Chatbot Arena. https://arxiv.org/abs/2306.05685
 - Knowledge Distillation: Hinton et al. (2015). Distilling the Knowledge in a Neural Network. https://arxiv.org/abs/1503.02531
+- PPO: Schulman et al. (2017). Proximal Policy Optimization Algorithms. https://arxiv.org/abs/1707.06347
+- DPO: Rafailov et al. (2024). Direct Preference Optimization: Your Language Model is Secretly a Reward Model. https://arxiv.org/abs/2305.18290
 - Bootstrap Methods: Efron, B. (1979). Bootstrap methods: Another look at the jackknife. Annals of Statistics, 7(1), 1-26.
