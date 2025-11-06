@@ -1,14 +1,20 @@
 # LLM Evaluation Framework
 
-> Production-ready evaluation framework for Large Language Models following 2025 SoTA best practices.
+> Evaluation framework for Large Language Models following 2025 SoTA best practices.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/)
 
+## TL;DR
+
+LLM evaluation framework with 2025 SoTA methodologies. Evaluates RAG systems (RAGAs metrics), model safety (toxicity detection), code quality (McCabe complexity), and includes statistical validation (bootstrap confidence intervals, paired t-tests). Also includes complete RLHF pipeline (SFT, reward model, PPO/DPO/KTO) to train AI models to follow human preferences. Works with open-source models (no API keys required), runs on small laptops, and provides baseline tracking for iterative improvement.
+
+**Quick Start**: `python3.11 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && python llm_evaluation_demo.py --input-file example_inputs/test_samples.json`
+
 ## Overview
 
-Complete evaluation pipeline for LLMs covering RAG systems, model compression, safety evaluation, and quality assessment. Implements state-of-the-art methodologies from recent research (2024-2025) with production-ready code, statistical rigor, and comprehensive benchmarking.
+Complete evaluation pipeline for LLMs covering RAG systems, model compression, safety evaluation, and quality assessment. Implements state-of-the-art methodologies from recent research (2024-2025) with statistical rigor and comprehensive benchmarking.
 
 ### Key Features
 
@@ -16,14 +22,14 @@ Complete evaluation pipeline for LLMs covering RAG systems, model compression, s
 - **Safety Assessment**: Toxicity detection, adversarial testing, prompt injection detection
 - **Quality Metrics**: Code quality assessment (McCabe, cognitive complexity)
 - **LLM-as-Judge**: Statistical significance testing with paired comparisons
-- **RLHF Pipeline**: Complete reinforcement learning from human feedback (SFT, reward model, PPO/DPO)
+- **RLHF Pipeline**: Complete reinforcement learning from human feedback (SFT, reward model, PPO/DPO/KTO) - TL;DR: Trains AI to follow human preferences using reinforcement learning
 - **Baseline Tracking**: Version comparison and improvement metrics over time
-- **Vector Search Benchmarking**: Comprehensive comparison (FAISS, Qdrant, Chroma, PostgreSQL+pgvector)
+- **Vector Search Benchmarking**: Performance comparison across FAISS, Qdrant, Chroma, PostgreSQL+pgvector, NumPy, and Scikit-learn. See [VECTOR_SEARCH_COMPARISON.md](docs/VECTOR_SEARCH_COMPARISON.md) for detailed analysis.
 - **Statistical Rigor**: Bootstrap confidence intervals, paired t-tests, effect size calculation
 
 ### Problem Statement
 
-Evaluating LLMs requires multiple dimensions: semantic quality, safety, code quality, and statistical validation. Existing frameworks are either too narrow (single metric) or too complex (enterprise-only). This framework provides a complete, production-ready solution following 2025 SoTA practices.
+Evaluating LLMs requires multiple dimensions: semantic quality, safety, code quality, and statistical validation. Existing frameworks are either too narrow (single metric) or too complex (enterprise-only). This framework provides a complete solution following 2025 SoTA practices.
 
 ### Solution
 
@@ -42,7 +48,7 @@ The framework consists of multiple evaluation components working together:
 - **Safety Evaluation**: Toxicity detection and adversarial testing
 - **Quality Evaluation**: Code quality assessment (McCabe, cognitive complexity)
 - **LLM-as-Judge**: Statistical significance testing with paired comparisons
-- **RLHF Pipeline**: Complete RLHF pipeline (SFT, reward model, PPO/DPO) with small laptop compatibility
+- **RLHF Pipeline**: Complete RLHF pipeline (SFT, reward model, PPO/DPO/KTO) with small laptop compatibility
 - **Statistical Testing**: Bootstrap confidence intervals, paired t-tests
 - **Baseline Tracking**: Version comparison and improvement metrics
 - **Vector Search Benchmarking**: Comprehensive comparison across libraries, databases, and RDBMS
@@ -60,23 +66,17 @@ See [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) for detailed architecture docume
 
 ### Performance Benchmarks
 
-Vector search comparison across multiple dimensions:
-- Query performance (latency, throughput)
-- Ingestion rate (vectors per second)
-- Scalability (performance vs dataset size)
-- Feature comparison (metadata filtering, persistence, ACID transactions)
+Vector search comparison across multiple dimensions: query performance, ingestion rate, scalability, resource usage, and feature support. Experimental results averaged over 3 iterations for statistical significance.
 
-See [VECTOR_SEARCH_COMPARISON.md](docs/VECTOR_SEARCH_COMPARISON.md) for detailed results.
+| Method | Scalability (1K→10K) | Best For |
+|--------|---------------------|----------|
+| PostgreSQL+pgvector | 1.09x | Large datasets, production |
+| Chroma | 1.24x | Large datasets (>10K) |
+| Scikit-learn | 6.70x | Medium datasets (5K-10K) |
+| Qdrant | 6.47x | Small-medium datasets (<10K) |
+| NumPy | 26.39x | Small datasets (<5K) |
 
-### Key Results
-
-Benchmark results vary by dataset size and hardware. Run the benchmark script to see actual performance metrics for your environment:
-
-```bash
-python vector_search_comparison.py --sizes 1000 5000 10000 --queries 50 --k 10 --visualize
-```
-
-The benchmark measures query performance, ingestion rate, scalability, and feature support across all solutions.
+See [VECTOR_SEARCH_COMPARISON.md](docs/VECTOR_SEARCH_COMPARISON.md) for detailed analysis, including algorithm complexity analysis, verified citations, architecture comparisons, and performance trade-offs.
 
 ## Components
 
@@ -99,11 +99,9 @@ Comprehensive evaluation script providing:
 
 ### vector_search_comparison.py
 
-Comprehensive vector search benchmarking:
-- Performance comparison: Query speed, ingestion rate, scalability
-- Feature comparison: Metadata filtering, persistence, ACID transactions
-- Multiple solutions: FAISS, NumPy, Scikit-learn, Qdrant, Chroma, PostgreSQL+pgvector
-- Visualization: Generate charts and dashboards (PNG/PDF)
+Vector search benchmarking across multiple solutions: FAISS, Qdrant, Chroma, PostgreSQL+pgvector, NumPy, and Scikit-learn. Measures query performance, ingestion rate, scalability, resource usage, and feature support. Generates performance visualizations and detailed analysis reports.
+
+See [VECTOR_SEARCH_COMPARISON.md](docs/VECTOR_SEARCH_COMPARISON.md) for algorithm complexity analysis, verified citations, and performance trade-offs.
 
 ### rlhf_pipeline.py
 
@@ -112,6 +110,7 @@ Complete RLHF pipeline script:
 - Reward Model Training: Human preference learning for PPO
 - PPO Training: Policy optimization with reward model
 - DPO Training: Direct preference optimization (alternative to PPO)
+- KTO Training: Kahneman-Tversky Optimization with binary feedback (alternative to DPO)
 - Small Laptop Compatible: Lightweight models (gpt2, distilgpt2)
 - Configuration-based: Edit configuration section to customize
 
@@ -136,14 +135,14 @@ Visualization script for benchmark results:
 
 ```bash
 # 1. Create virtual environment
-python3.11 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python3.11 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Run evaluation
-python llm_evaluation_demo.py --input-file data/test_samples.json
+# 3. Run evaluation (create your own test_samples.json or use example_inputs)
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json
 ```
 
 ### Output Format
@@ -165,8 +164,8 @@ Run the script to see actual results.
 ## Installation
 
 ```bash
-python3.11 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python3.11 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
@@ -204,14 +203,14 @@ jupyter notebook small_llm_demo.ipynb
 ### Evaluation Script
 
 ```bash
-# Basic evaluation
-python llm_evaluation_demo.py --input-file data/test_samples.json --output-dir output/
+# Basic evaluation (create your own test_samples.json or use example_inputs)
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --output-dir output/
 
 # Save baseline for future comparison
-python llm_evaluation_demo.py --input-file data/test_samples.json --save-baseline v1.0
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --save-baseline v1.0
 
 # Compare against baseline
-python llm_evaluation_demo.py --input-file data/test_samples.json --compare-baseline v1.0
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --compare-baseline v1.0
 
 # Compare two baseline versions
 python llm_evaluation_demo.py --compare-versions v1.0 v2.0
@@ -251,9 +250,9 @@ python examples/example_rlhf.py
 ```
 
 Configuration: Edit the configuration section in `rlhf_pipeline.py`:
-- `PIPELINE_STAGE`: 'sft', 'reward', 'ppo', 'dpo', or 'full'
+- `PIPELINE_STAGE`: 'sft', 'reward', 'ppo', 'dpo', 'kto', or 'full'
 - `MODEL_NAME`: Model name (default: gpt2 for small laptop compatibility)
-- `RLHF_ALGORITHM`: 'ppo' or 'dpo'
+- `RLHF_ALGORITHM`: 'ppo', 'dpo', or 'kto'
 
 See [RLHF.md](docs/RLHF.md) for complete documentation.
 
@@ -263,8 +262,8 @@ See [RLHF.md](docs/RLHF.md) for complete documentation.
 - [METHODOLOGY.md](docs/METHODOLOGY.md) - Algorithm selection and research citations
 - [DATA_STRATEGY.md](docs/DATA_STRATEGY.md) - Data source selection and model criteria
 - [CHALLENGES.md](docs/CHALLENGES.md) - Technical challenges and solutions
-- [RLHF.md](docs/RLHF.md) - RLHF pipeline documentation (SFT, reward model, PPO/DPO)
-- [VECTOR_SEARCH_COMPARISON.md](docs/VECTOR_SEARCH_COMPARISON.md) - FAISS vs Qdrant vs Chroma vs PostgreSQL+pgvector benchmarks
+- [RLHF.md](docs/RLHF.md) - RLHF pipeline documentation (SFT, reward model, PPO/DPO/KTO)
+- [VECTOR_SEARCH_COMPARISON.md](docs/VECTOR_SEARCH_COMPARISON.md) - Vector search performance comparison across FAISS, Qdrant, Chroma, PostgreSQL+pgvector, NumPy, and Scikit-learn. Includes experimental results, scalability analysis, algorithm complexity analysis, verified citations, and performance trade-offs.
 - [EXAMPLES.md](docs/EXAMPLES.md) - Real-world use cases and examples
 - [TUTORIAL.md](docs/TUTORIAL.md) - Step-by-step tutorial guide
 
@@ -301,7 +300,7 @@ Implements 2025 SoTA approaches:
 - **RAGAs Framework**: RAG evaluation metrics (faithfulness, answer relevancy, context precision/recall)
 - **Statistical Rigor**: Bootstrap confidence intervals and paired t-tests
 - **LLM-as-Judge**: Evaluation methodology with statistical significance testing
-- **RLHF Pipeline**: Complete RLHF pipeline (SFT, reward model, PPO/DPO) with small laptop compatibility
+- **RLHF Pipeline**: Complete RLHF pipeline (SFT, reward model, PPO/DPO/KTO) with small laptop compatibility
 - **Baseline Tracking**: Comparison and improvement metrics over time
 - **Vector Search Benchmarking**: Comprehensive comparison across libraries, databases, and RDBMS
 - **Enterprise Integration**: AWS Bedrock and OpenAI API with error handling
@@ -309,31 +308,50 @@ Implements 2025 SoTA approaches:
 ## Project Structure
 
 ```
-llm/
-├── config.py                 # Configuration management
-├── requirements.txt          # Dependencies
-├── env.example               # Environment variables template
-├── small_llm_demo.ipynb      # RAG and model management
-├── llm_evaluation_demo.py   # Evaluation script
-├── vector_search_comparison.py # Vector search benchmarks
-├── visualize_benchmarks.py  # Visualization script
-├── rlhf_pipeline.py        # RLHF pipeline script
-├── docker-compose.yml       # PostgreSQL + pgvector setup
-├── rlhf/                    # RLHF module
+simple_llm/
+├── config.py                      # Configuration management
+├── requirements.txt               # Dependencies
+├── env.example                    # Environment variables template
+├── small_llm_demo.ipynb           # RAG and model management
+├── llm_evaluation_demo.py        # Evaluation script
+├── vector_search_comparison.py    # Vector search benchmarks
+├── visualize_benchmarks.py        # Visualization script
+├── rlhf_pipeline.py              # RLHF pipeline script
+├── test_rlhf_comprehensive.py    # RLHF comprehensive test suite
+├── evaluate_rlhf_effectiveness.py # RLHF effectiveness evaluation
+├── docker-compose.yml             # PostgreSQL + pgvector setup
+├── rlhf/                          # RLHF module
+│   ├── __init__.py
 │   ├── data_preprocessing.py
 │   ├── supervised_finetuning.py
 │   ├── preference_collection.py
 │   ├── reward_model.py
 │   ├── ppo_trainer.py
-│   └── dpo_trainer.py
+│   ├── dpo_trainer.py
+│   ├── kto_trainer.py
+│   └── evaluation_metrics.py
 ├── utils/
+│   ├── __init__.py
 │   ├── evaluation_metrics.py    # RAGAs metrics
-│   ├── statistical_testing.py   # Statistical utilities
-│   └── baseline_tracking.py     # Baseline comparison and improvement tracking
-├── examples/                # Example scripts and notebooks
-├── baselines/                # Saved baseline results
-├── output/                   # Evaluation results and charts
-└── docs/                     # Documentation
+│   ├── statistical_testing.py    # Statistical utilities
+│   └── baseline_tracking.py       # Baseline comparison and improvement tracking
+├── example_inputs/                # Example input files (tracked in git)
+│   └── rlhf/
+│       ├── instructions.json
+│       ├── prompts.json
+│       ├── kto_feedback.json
+│       └── preferences/
+│           └── preferences.json
+├── examples/                      # Example scripts
+│   ├── example_rlhf.py
+│   ├── example_rag_evaluation.py
+│   ├── example_model_comparison.py
+│   ├── example_baseline_tracking.py
+│   └── example_vector_search.py
+├── data/                          # Runtime data (ignored by git)
+├── baselines/                     # Saved baseline results
+├── output/                        # Evaluation results and charts
+└── docs/                          # Documentation
 ```
 
 ## Requirements
@@ -366,7 +384,7 @@ Based on actual testing:
 - **Toxicity Detection**: Working (0.0 scores, non-toxic classification)
 - **Code Quality Assessment**: Working (McCabe: 1.0-4.0, Cognitive: 1.5-4.5)
 - **Adversarial Testing**: Working (pattern-based detection)
-- **LLM-as-Judge**: Requires model loading (can crash on low-memory systems)
+- **LLM-as-Judge**: Requires model loading 
 
 See [CHALLENGES.md](docs/CHALLENGES.md) for detailed information on memory issues and solutions.
 
@@ -399,4 +417,5 @@ MIT License - see LICENSE file for details.
 - Knowledge Distillation: Hinton et al. (2015). Distilling the Knowledge in a Neural Network. https://arxiv.org/abs/1503.02531
 - PPO: Schulman et al. (2017). Proximal Policy Optimization Algorithms. https://arxiv.org/abs/1707.06347
 - DPO: Rafailov et al. (2024). Direct Preference Optimization: Your Language Model is Secretly a Reward Model. https://arxiv.org/abs/2305.18290
+- KTO: Ethayarajh et al. (2024). KTO: Model Alignment as Prospect Theoretic Optimization. https://arxiv.org/abs/2402.01306
 - Bootstrap Methods: Efron, B. (1979). Bootstrap methods: Another look at the jackknife. Annals of Statistics, 7(1), 1-26.

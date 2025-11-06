@@ -44,6 +44,7 @@ ENV/
 
 # Cursor
 .cursor/
+!.cursor/rules/
 
 # Environment variables
 .env
@@ -61,6 +62,7 @@ results/
 baselines/
 output/temp/
 *.json
+!example_inputs/**/*.json
 *.csv
 *.parquet
 
@@ -74,11 +76,14 @@ models/
 *.safetensors
 huggingface/
 
-# Data files
+# Data files (runtime data - ignored)
 data/
 datasets/
 *.pkl
 *.pickle
+
+# Example inputs (tracked in git)
+!example_inputs/
 
 # Colab
 *.ipynb_checkpoints/

@@ -292,12 +292,12 @@ import json
 # Step 1: Establish baseline (v1.0)
 print("Establishing baseline v1.0...")
 # Run evaluation and save baseline
-# python llm_evaluation_demo.py --input-file data/production_samples.json --save-baseline v1.0
+# python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --save-baseline v1.0
 
 # Step 2: After improvements, evaluate again
 print("Evaluating improved version v2.0...")
 # Run evaluation
-# python llm_evaluation_demo.py --input-file data/production_samples.json --save-baseline v2.0
+# python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --save-baseline v2.0
 
 # Step 3: Compare versions
 baseline_tracker = BaselineTracker()
@@ -315,7 +315,7 @@ print("\n" + report)
 
 # Step 4: Continuous monitoring
 # Run evaluation regularly and compare against baseline
-# python llm_evaluation_demo.py --input-file data/production_samples.json --compare-baseline v1.0
+# python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --compare-baseline v1.0
 ```
 
 ### Expected Workflow
@@ -519,7 +519,7 @@ Each use case includes:
 - Complete code solution
 - Expected outputs
 - Decision criteria
-- Best practices
+- Recommended practices
 
 For more examples, see `examples/` directory for complete scripts and notebooks.
 

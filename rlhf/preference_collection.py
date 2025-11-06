@@ -215,6 +215,11 @@ def load_preference_data(file_path: Path) -> List[Dict[str, Any]]:
     with open(file_path, 'r') as f:
         data = json.load(f)
     
-    preferences = data.get("preferences", [])
+    # Handle both list format and dict format
+    if isinstance(data, list):
+        preferences = data
+    else:
+        preferences = data.get("preferences", [])
+    
     logger.info(f"Loaded {len(preferences)} preferences from: {file_path}")
     return preferences

@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
 ### Step 2: Create Test Data
 
-Create `data/test_samples.json`:
+Create `example_inputs/test_samples.json`:
 
 ```json
 {
@@ -40,7 +40,7 @@ Create `data/test_samples.json`:
 
 ```bash
 # Basic evaluation
-python llm_evaluation_demo.py --input-file data/test_samples.json --output-dir output/
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --output-dir output/
 ```
 
 ### Step 4: Review Results
@@ -75,10 +75,10 @@ Check `output/evaluation_results_*.json` for results:
 
 ```bash
 # Save baseline for future comparison
-python llm_evaluation_demo.py --input-file data/test_samples.json --save-baseline initial_run
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --save-baseline initial_run
 ```
 
-**Congratulations!** You've completed your first evaluation.
+First evaluation completed.
 
 ---
 
@@ -105,7 +105,7 @@ python llm_evaluation_demo.py --input-file data/test_samples.json --save-baselin
 - **Score 0.0-0.5**: Low quality
 - **Score 0.5-0.7**: Moderate quality
 - **Score 0.7-0.9**: Good quality
-- **Score 0.9-1.0**: Excellent quality
+- **Score 0.9-1.0**: High quality
 
 ### Understanding Statistical Significance
 
@@ -124,7 +124,7 @@ python llm_evaluation_demo.py --input-file data/test_samples.json --save-baselin
 
 ```bash
 # Run evaluation and save baseline v1.0
-python llm_evaluation_demo.py --input-file data/test_samples.json --save-baseline v1.0
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --save-baseline v1.0
 ```
 
 ### Step 2: Make Improvements
@@ -133,7 +133,7 @@ After improving your model or system, run evaluation again:
 
 ```bash
 # Run evaluation and save baseline v2.0
-python llm_evaluation_demo.py --input-file data/test_samples.json --save-baseline v2.0
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --save-baseline v2.0
 ```
 
 ### Step 3: Compare Versions
@@ -224,7 +224,7 @@ Based on results:
 ```bash
 # Run LLM-as-Judge evaluation
 python llm_evaluation_demo.py \
-    --input-file data/test_samples.json \
+    --input-file example_inputs/test_samples.json \
     --evaluation-type llm-judge \
     --llm-provider huggingface
 ```
@@ -263,13 +263,13 @@ Create test data file or use default samples.
 
 ```bash
 # Run all evaluation types
-python llm_evaluation_demo.py --input-file data/test_samples.json --evaluation-type all
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --evaluation-type all
 
 # Run specific evaluation type
-python llm_evaluation_demo.py --input-file data/test_samples.json --evaluation-type toxicity
-python llm_evaluation_demo.py --input-file data/test_samples.json --evaluation-type code-quality
-python llm_evaluation_demo.py --input-file data/test_samples.json --evaluation-type adversarial
-python llm_evaluation_demo.py --input-file data/test_samples.json --evaluation-type llm-judge
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --evaluation-type toxicity
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --evaluation-type code-quality
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --evaluation-type adversarial
+python llm_evaluation_demo.py --input-file example_inputs/test_samples.json --evaluation-type llm-judge
 ```
 
 ### Step 3: Review Results
@@ -281,7 +281,7 @@ Check `output/evaluation_results_*.json` for detailed results.
 ```bash
 # Save baseline for future comparison
 python llm_evaluation_demo.py \
-    --input-file data/test_samples.json \
+    --input-file example_inputs/test_samples.json \
     --save-baseline production_v1.0
 ```
 

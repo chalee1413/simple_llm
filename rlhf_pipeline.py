@@ -42,7 +42,12 @@ from rlhf import (
     PPOTrainerWrapper,
     train_with_ppo,
     DPOTrainerWrapper,
-    train_with_dpo
+    train_with_dpo,
+    KTOTrainerWrapper,
+    train_with_kto,
+    evaluate_reward_model,
+    RewardModelEvaluator,
+    TrainingMetricsTracker
 )
 from transformers import AutoTokenizer
 from llm_evaluation_demo import LLMAsJudge
@@ -76,10 +81,11 @@ MODEL_NAME = Config.HF_LLM_MODEL  # Default: gpt2 (small laptop compatible)
 # MODEL_NAME = 'distilgpt2'  # ~82M parameters
 # MODEL_NAME = 'gpt2-medium'  # ~350M parameters (requires 4GB+ RAM)
 
-# RLHF algorithm: 'ppo' or 'dpo'
+# RLHF algorithm: 'ppo', 'dpo', or 'kto'
 # - 'ppo': Requires reward model training (more complex, better for complex tasks)
 # - 'dpo': Direct optimization on preferences (simpler, faster, no reward model needed)
-RLHF_ALGORITHM = 'ppo'  # Change to 'dpo' for direct preference optimization
+# - 'kto': Works with binary feedback (good/bad) instead of preference pairs
+RLHF_ALGORITHM = 'ppo'  # Change to 'dpo' or 'kto' for alternative algorithms
 
 # Data paths
 DATA_PATH = Config.RLHF_DATA_DIR / "instructions.json"  # Instruction dataset for SFT
@@ -159,6 +165,7 @@ def stage_reward_model(
     sft_model_path: Path,
     preferences_path: Path,
     output_dir: Optional[Path] = None,
+    evaluate: bool = True,
     **kwargs
 ) -> Dict[str, Any]:
     """
@@ -168,6 +175,7 @@ def stage_reward_model(
         sft_model_path: Path to SFT model
         preferences_path: Path to preference data
         output_dir: Output directory
+        evaluate: Whether to evaluate the reward model after training
         **kwargs: Additional training arguments
     
     Returns:
@@ -195,13 +203,27 @@ def stage_reward_model(
         **kwargs
     )
     
+    eval_metrics = {}
+    if evaluate:
+        logger.info("Evaluating reward model...")
+        from transformers import AutoTokenizer
+        from rlhf.reward_model import RewardModel
+        
+        tokenizer = AutoTokenizer.from_pretrained(str(output_dir))
+        reward_model = RewardModel(str(sft_model_path))
+        reward_model.load(output_dir)
+        
+        eval_metrics = evaluate_reward_model(reward_model, tokenizer, preferences)
+        logger.info(f"Reward model evaluation: {eval_metrics}")
+    
     logger.info(f"[OK] Reward model training completed. Model saved to: {output_dir}")
     logger.info(f"Training metrics: {metrics}")
     
     return {
         "stage": "reward_model",
         "model_path": str(output_dir),
-        "metrics": metrics
+        "metrics": metrics,
+        "evaluation": eval_metrics
     }
 
 
@@ -298,6 +320,61 @@ def stage_dpo(
     
     return {
         "stage": "dpo",
+        "model_path": str(output_dir),
+        "metrics": metrics
+    }
+
+
+def stage_kto(
+    sft_model_path: Path,
+    feedback_path: Path,
+    output_dir: Optional[Path] = None,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Stage 5: KTO Training.
+    
+    Args:
+        sft_model_path: Path to SFT model
+        feedback_path: Path to feedback data (binary good/bad format)
+        output_dir: Output directory
+        **kwargs: Additional training arguments
+    
+    Returns:
+        Training metrics and model path
+    
+    Note:
+        KTO uses binary feedback format:
+        [{"prompt": str, "response": str, "label": "good" or "bad"}, ...]
+    """
+    logger.info("=" * 80)
+    logger.info("STAGE 5: KTO TRAINING")
+    logger.info("=" * 80)
+    
+    output_dir = output_dir or Config.RLHF_MODELS_DIR / "kto"
+    
+    logger.info(f"Loading feedback data from: {feedback_path}")
+    with open(feedback_path, 'r') as f:
+        feedback_data = json.load(f)
+    
+    if len(feedback_data) < Config.RLHF_MIN_PREFERENCES:
+        logger.warning(f"Only {len(feedback_data)} feedback examples found. Minimum recommended: {Config.RLHF_MIN_PREFERENCES}")
+    
+    logger.info(f"Training KTO on {len(feedback_data)} feedback examples")
+    logger.info(f"SFT model path: {sft_model_path}")
+    
+    metrics = train_with_kto(
+        model_name=str(sft_model_path),
+        feedback_data=feedback_data,
+        output_dir=output_dir,
+        **kwargs
+    )
+    
+    logger.info(f"[OK] KTO training completed. Model saved to: {output_dir}")
+    logger.info(f"Training metrics: {metrics}")
+    
+    return {
+        "stage": "kto",
         "model_path": str(output_dir),
         "metrics": metrics
     }
@@ -585,9 +662,29 @@ def main():
         
         logger.info(f"[OK] DPO results: {results}")
     
+    elif PIPELINE_STAGE == 'kto':
+        if not SFT_MODEL_PATH.exists():
+            logger.error(f"SFT model not found: {SFT_MODEL_PATH}")
+            logger.error("Please run SFT stage first or update SFT_MODEL_PATH")
+            return
+        
+        if not PREFERENCES_PATH.exists():
+            logger.error(f"Feedback data not found: {PREFERENCES_PATH}")
+            logger.error("Please create the feedback data file or update PREFERENCES_PATH")
+            logger.error("Note: KTO uses binary feedback format: {'prompt': str, 'response': str, 'label': 'good' or 'bad'}")
+            return
+        
+        results = stage_kto(
+            sft_model_path=SFT_MODEL_PATH,
+            feedback_path=PREFERENCES_PATH,
+            output_dir=OUTPUT_DIR / "kto"
+        )
+        
+        logger.info(f"[OK] KTO results: {results}")
+    
     else:
         logger.error(f"Invalid pipeline stage: {PIPELINE_STAGE}")
-        logger.error("Valid stages: 'sft', 'reward', 'ppo', 'dpo', or 'full'")
+        logger.error("Valid stages: 'sft', 'reward', 'ppo', 'dpo', 'kto', or 'full'")
         logger.error("Edit PIPELINE_STAGE in the configuration section to change")
 
 

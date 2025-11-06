@@ -39,6 +39,16 @@ from .dpo_trainer import (
     DPOTrainerWrapper,
     train_with_dpo
 )
+from .evaluation_metrics import (
+    RewardModelEvaluator,
+    TrainingMetricsTracker,
+    evaluate_reward_model
+)
+from .kto_trainer import (
+    KTOTrainerWrapper,
+    train_with_kto,
+    prepare_kto_dataset
+)
 
 __all__ = [
     "prepare_sft_dataset",
@@ -56,4 +66,10 @@ __all__ = [
     "train_with_ppo",
     "DPOTrainerWrapper",
     "train_with_dpo",
+    "KTOTrainerWrapper",
+    "train_with_kto",
+    "prepare_kto_dataset",
+    "RewardModelEvaluator",
+    "TrainingMetricsTracker",
+    "evaluate_reward_model",
 ]

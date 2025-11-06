@@ -1,0 +1,53 @@
+[
+  {
+    "prompt": "Explain what machine learning is",
+    "response": "Machine learning is a subset of artificial intelligence that enables computers to learn from data without explicit programming.",
+    "label": "good"
+  },
+  {
+    "prompt": "Explain what machine learning is",
+    "response": "Machine learning is programming.",
+    "label": "bad"
+  },
+  {
+    "prompt": "What is the difference between supervised and unsupervised learning?",
+    "response": "Supervised learning uses labeled data, while unsupervised learning finds patterns in unlabeled data.",
+    "label": "good"
+  },
+  {
+    "prompt": "What is the difference between supervised and unsupervised learning?",
+    "response": "They are the same thing.",
+    "label": "bad"
+  },
+  {
+    "prompt": "Describe neural networks",
+    "response": "Neural networks are computing systems inspired by biological neurons with interconnected nodes in layers.",
+    "label": "good"
+  },
+  {
+    "prompt": "Describe neural networks",
+    "response": "Neural networks are just computers.",
+    "label": "bad"
+  },
+  {
+    "prompt": "What is reinforcement learning?",
+    "response": "Reinforcement learning is a type of machine learning where an agent learns through interaction with an environment.",
+    "label": "good"
+  },
+  {
+    "prompt": "What is reinforcement learning?",
+    "response": "Reinforcement learning is just trial and error.",
+    "label": "bad"
+  },
+  {
+    "prompt": "Explain deep learning",
+    "response": "Deep learning uses neural networks with multiple layers to learn complex patterns in data.",
+    "label": "good"
+  },
+  {
+    "prompt": "Explain deep learning",
+    "response": "Deep learning is just neural networks.",
+    "label": "bad"
+  }
+]
+

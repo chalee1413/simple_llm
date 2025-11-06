@@ -436,6 +436,88 @@ class BenchmarkVisualizer:
         logger.info(f"Summary dashboard saved: {output_file}")
         return output_file
     
+    def plot_resource_usage(self, df: pd.DataFrame, format: str = "png") -> Optional[Path]:
+        """
+        Plot CPU and disk usage comparison.
+        
+        Args:
+            df: Benchmark DataFrame
+            format: Output format (png or pdf)
+        
+        Returns:
+            Path to saved chart or None if no resource data available
+        """
+        # Check if resource metrics are available
+        if 'cpu_usage_mean' not in df.columns or df['cpu_usage_mean'].isna().all():
+            logger.warning("No CPU usage data available. Skipping resource usage chart.")
+            return None
+        
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        
+        # CPU Usage
+        ax1 = axes[0, 0]
+        for method in df['method'].unique():
+            method_df = df[df['method'] == method].sort_values('n_vectors')
+            if 'cpu_usage_mean' in method_df.columns:
+                ax1.plot(method_df['n_vectors'], method_df['cpu_usage_mean'], 
+                        marker='o', linewidth=2, markersize=6, label=method)
+        ax1.set_xlabel('Dataset Size (vectors)', fontsize=11, fontweight='bold')
+        ax1.set_ylabel('CPU Usage (%)', fontsize=11, fontweight='bold')
+        ax1.set_title('CPU Usage vs Dataset Size', fontsize=12, fontweight='bold')
+        ax1.legend(loc='best', fontsize=9)
+        ax1.grid(True, alpha=0.3)
+        ax1.set_xscale('log')
+        
+        # Memory Usage
+        ax2 = axes[0, 1]
+        for method in df['method'].unique():
+            method_df = df[df['method'] == method].sort_values('n_vectors')
+            if 'memory_usage_mean_mb' in method_df.columns:
+                ax2.plot(method_df['n_vectors'], method_df['memory_usage_mean_mb'], 
+                        marker='s', linewidth=2, markersize=6, label=method)
+        ax2.set_xlabel('Dataset Size (vectors)', fontsize=11, fontweight='bold')
+        ax2.set_ylabel('Memory Usage (MB)', fontsize=11, fontweight='bold')
+        ax2.set_title('Memory Usage vs Dataset Size', fontsize=12, fontweight='bold')
+        ax2.legend(loc='best', fontsize=9)
+        ax2.grid(True, alpha=0.3)
+        ax2.set_xscale('log')
+        
+        # Disk I/O Read
+        ax3 = axes[1, 0]
+        for method in df['method'].unique():
+            method_df = df[df['method'] == method].sort_values('n_vectors')
+            if 'disk_read_mb' in method_df.columns:
+                ax3.bar(range(len(method_df)), method_df['disk_read_mb'].fillna(0), 
+                       label=method, alpha=0.7)
+        ax3.set_xlabel('Dataset Size Index', fontsize=11, fontweight='bold')
+        ax3.set_ylabel('Disk Read (MB)', fontsize=11, fontweight='bold')
+        ax3.set_title('Disk Read I/O', fontsize=12, fontweight='bold')
+        ax3.legend(loc='best', fontsize=9)
+        ax3.grid(True, alpha=0.3, axis='y')
+        
+        # Disk I/O Write
+        ax4 = axes[1, 1]
+        for method in df['method'].unique():
+            method_df = df[df['method'] == method].sort_values('n_vectors')
+            if 'disk_write_mb' in method_df.columns:
+                ax4.bar(range(len(method_df)), method_df['disk_write_mb'].fillna(0), 
+                       label=method, alpha=0.7)
+        ax4.set_xlabel('Dataset Size Index', fontsize=11, fontweight='bold')
+        ax4.set_ylabel('Disk Write (MB)', fontsize=11, fontweight='bold')
+        ax4.set_title('Disk Write I/O', fontsize=12, fontweight='bold')
+        ax4.legend(loc='best', fontsize=9)
+        ax4.grid(True, alpha=0.3, axis='y')
+        
+        plt.suptitle('Resource Usage Comparison', fontsize=16, fontweight='bold', y=0.995)
+        plt.tight_layout()
+        
+        output_file = self.output_dir / f"resource_usage.{format if format != 'jpeg' else 'jpg'}"
+        plt.savefig(output_file, dpi=300, bbox_inches='tight', format=format if format != 'jpeg' else 'jpg')
+        plt.close()
+        
+        logger.info(f"Resource usage chart saved: {output_file}")
+        return output_file
+    
     def generate_all_charts(self, csv_file: Path, formats: List[str] = ["png"]) -> Dict[str, Path]:
         """
         Generate all charts from benchmark CSV.
@@ -464,6 +546,10 @@ class BenchmarkVisualizer:
             charts[f'scalability_analysis_{format}'] = self.plot_scalability_analysis(df, format)
             charts[f'feature_comparison_{format}'] = self.plot_feature_comparison(df, format)
             charts[f'summary_dashboard_{format}'] = self.plot_summary_dashboard(df, format)
+            
+            resource_chart = self.plot_resource_usage(df, format)
+            if resource_chart:
+                charts[f'resource_usage_{format}'] = resource_chart
         
         logger.info(f"Generated {len(charts)} charts")
         return charts

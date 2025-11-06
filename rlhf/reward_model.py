@@ -28,6 +28,7 @@ from transformers import (
 from datasets import Dataset
 
 from config import Config
+from .evaluation_metrics import RewardModelEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -248,24 +249,65 @@ class RewardTrainer:
             eval_strategy="steps" if eval_dataset else "no",
             save_total_limit=3,
             load_best_model_at_end=True if eval_dataset else False,
-            fp16=torch.cuda.is_available(),
+            fp16=False,
+            remove_unused_columns=False,
             report_to="none"
         )
         
-        def reward_loss_function(model_outputs, labels):
-            """Compute reward loss for pairwise comparisons."""
-            chosen_rewards = model_outputs["chosen_logits"]
-            rejected_rewards = model_outputs["rejected_logits"]
-            
-            loss = -torch.nn.functional.logsigmoid(chosen_rewards - rejected_rewards).mean()
-            return loss
+        # Reward model uses custom loss - handled by model forward pass
         
-        self.trainer = Trainer(
+        # Custom trainer for reward model with pairwise comparison
+        from transformers import Trainer, DataCollator
+        
+        class RewardDataCollator(DataCollator):
+            """Custom data collator for reward model."""
+            
+            def __call__(self, features):
+                """Collate batch for reward model."""
+                batch = {}
+                for key in ['chosen_input_ids', 'chosen_attention_mask', 'rejected_input_ids', 'rejected_attention_mask']:
+                    batch[key] = torch.stack([torch.tensor(f[key]) for f in features])
+                return batch
+        
+        class RewardModelTrainer(Trainer):
+            """Custom trainer for reward model with pairwise loss."""
+            
+            def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+                """Compute pairwise comparison loss."""
+                # Extract inputs from batch
+                chosen_input_ids = inputs.get("chosen_input_ids")
+                chosen_attention_mask = inputs.get("chosen_attention_mask")
+                rejected_input_ids = inputs.get("rejected_input_ids")
+                rejected_attention_mask = inputs.get("rejected_attention_mask")
+                
+                if chosen_input_ids is None or rejected_input_ids is None:
+                    raise ValueError("Missing required inputs for reward model training")
+                
+                # Get rewards for chosen and rejected
+                chosen_outputs = model(
+                    input_ids=chosen_input_ids,
+                    attention_mask=chosen_attention_mask
+                )
+                chosen_rewards = chosen_outputs.logits.squeeze(-1)
+                
+                rejected_outputs = model(
+                    input_ids=rejected_input_ids,
+                    attention_mask=rejected_attention_mask
+                )
+                rejected_rewards = rejected_outputs.logits.squeeze(-1)
+                
+                # Pairwise comparison loss
+                loss = -torch.nn.functional.logsigmoid(chosen_rewards - rejected_rewards).mean()
+                
+                return (loss, {"chosen_rewards": chosen_rewards, "rejected_rewards": rejected_rewards}) if return_outputs else loss
+        
+        self.trainer = RewardModelTrainer(
             model=self.reward_model.model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            tokenizer=self.tokenizer
+            data_collator=RewardDataCollator(),
+            processing_class=self.tokenizer
         )
         
         logger.info("Starting reward model training...")
@@ -291,6 +333,24 @@ class RewardTrainer:
             })
         
         return metrics
+    
+    def evaluate_model(
+        self,
+        preferences: List[Dict[str, Any]],
+        max_length: Optional[int] = None
+    ) -> Dict[str, float]:
+        """
+        Evaluate reward model on preference data.
+        
+        Args:
+            preferences: List of preference dictionaries
+            max_length: Maximum sequence length
+        
+        Returns:
+            Evaluation metrics dictionary
+        """
+        evaluator = RewardModelEvaluator(self.reward_model, self.tokenizer)
+        return evaluator.evaluate(preferences, max_length)
 
 
 def train_reward_model(

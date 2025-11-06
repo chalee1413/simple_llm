@@ -31,7 +31,8 @@ class Config:
     
     # Project paths
     PROJECT_ROOT: Path = Path(__file__).parent
-    DATA_DIR: Path = PROJECT_ROOT / "data"
+    DATA_DIR: Path = PROJECT_ROOT / "data"  # Runtime data (ignored)
+    EXAMPLE_INPUTS_DIR: Path = PROJECT_ROOT / "example_inputs"  # Example inputs (tracked)
     OUTPUT_DIR: Path = PROJECT_ROOT / "output"
     LOG_DIR: Path = PROJECT_ROOT / "logs"
     
@@ -81,9 +82,9 @@ class Config:
     HF_LLM_MODEL: str = os.getenv("HF_LLM_MODEL", "gpt2")  # Small model that works in free Colab
     
     # RLHF Configuration
-    RLHF_DATA_DIR: Path = PROJECT_ROOT / "data" / "rlhf"
+    RLHF_DATA_DIR: Path = PROJECT_ROOT / "example_inputs" / "rlhf"
     RLHF_OUTPUT_DIR: Path = PROJECT_ROOT / "output" / "rlhf"
-    RLHF_PREFERENCES_DIR: Path = PROJECT_ROOT / "data" / "rlhf" / "preferences"
+    RLHF_PREFERENCES_DIR: Path = PROJECT_ROOT / "example_inputs" / "rlhf" / "preferences"
     RLHF_MODELS_DIR: Path = PROJECT_ROOT / "output" / "rlhf" / "models"
     
     # SFT Configuration
@@ -124,8 +125,16 @@ class Config:
     DPO_BETA: float = float(os.getenv("DPO_BETA", "0.1"))  # Temperature parameter for DPO
     DPO_MAX_SEQ_LENGTH: int = int(os.getenv("DPO_MAX_SEQ_LENGTH", "512"))
     
+    # KTO Configuration
+    KTO_LEARNING_RATE: float = float(os.getenv("KTO_LEARNING_RATE", "1e-5"))
+    KTO_BATCH_SIZE: int = int(os.getenv("KTO_BATCH_SIZE", "4"))
+    KTO_GRADIENT_ACCUMULATION_STEPS: int = int(os.getenv("KTO_GRADIENT_ACCUMULATION_STEPS", "4"))
+    KTO_NUM_EPOCHS: int = int(os.getenv("KTO_NUM_EPOCHS", "1"))
+    KTO_BETA: float = float(os.getenv("KTO_BETA", "0.1"))  # Temperature parameter for KTO
+    KTO_MAX_SEQ_LENGTH: int = int(os.getenv("KTO_MAX_SEQ_LENGTH", "512"))
+    
     # RLHF Training Configuration
-    RLHF_ALGORITHM: str = os.getenv("RLHF_ALGORITHM", "ppo")  # ppo or dpo
+    RLHF_ALGORITHM: str = os.getenv("RLHF_ALGORITHM", "ppo")  # ppo, dpo, or kto
     RLHF_CHECKPOINT_STEPS: int = int(os.getenv("RLHF_CHECKPOINT_STEPS", "100"))
     RLHF_EVAL_STEPS: int = int(os.getenv("RLHF_EVAL_STEPS", "50"))
     RLHF_SAVE_STEPS: int = int(os.getenv("RLHF_SAVE_STEPS", "100"))
@@ -163,7 +172,8 @@ class Config:
         """Create necessary directories if they don't exist."""
         for directory in [
             cls.DATA_DIR, cls.OUTPUT_DIR, cls.LOG_DIR, cls.HF_CACHE_DIR,
-            cls.RLHF_DATA_DIR, cls.RLHF_OUTPUT_DIR, cls.RLHF_PREFERENCES_DIR, cls.RLHF_MODELS_DIR
+            cls.EXAMPLE_INPUTS_DIR, cls.RLHF_DATA_DIR, cls.RLHF_OUTPUT_DIR, 
+            cls.RLHF_PREFERENCES_DIR, cls.RLHF_MODELS_DIR
         ]:
             directory.mkdir(parents=True, exist_ok=True)
 

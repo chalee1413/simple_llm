@@ -19,11 +19,22 @@ References:
 import time
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 import logging
 from pathlib import Path
 import gc
 import sys
+import os
+import threading
+from collections import defaultdict
+
+# Resource monitoring
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    logger.warning("psutil not available. CPU/disk monitoring will be disabled. Install with: pip install psutil")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -72,6 +83,138 @@ except ImportError:
     logger.warning("PostgreSQL not available. Install with: pip install psycopg2-binary")
 
 
+class ResourceMonitor:
+    """
+    Monitor CPU and disk usage during benchmarks.
+    
+    Tracks:
+    - CPU usage (%)
+    - Memory usage (MB)
+    - Disk I/O (read/write bytes)
+    - Disk usage (MB)
+    """
+    
+    def __init__(self):
+        """Initialize resource monitor."""
+        self.process = psutil.Process(os.getpid())
+        self.monitoring = False
+        self.monitor_thread = None
+        self.cpu_samples = []
+        self.memory_samples = []
+        self.disk_read_samples = []
+        self.disk_write_samples = []
+        self.disk_usage_samples = []
+        self.start_time = None
+        self.end_time = None
+        
+    def start(self):
+        """Start monitoring resources."""
+        if not PSUTIL_AVAILABLE:
+            return
+            
+        self.monitoring = True
+        self.cpu_samples = []
+        self.memory_samples = []
+        self.disk_read_samples = []
+        self.disk_write_samples = []
+        self.disk_usage_samples = []
+        self.start_time = time.time()
+        
+        # Get initial disk I/O
+        initial_io = self.process.io_counters()
+        self.initial_read = initial_io.read_bytes if initial_io else 0
+        self.initial_write = initial_io.write_bytes if initial_io else 0
+        
+        # Get initial disk usage
+        try:
+            disk_usage = psutil.disk_usage('/')
+            self.initial_disk_usage = disk_usage.used
+        except:
+            self.initial_disk_usage = 0
+        
+        # Start monitoring thread
+        self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self.monitor_thread.start()
+    
+    def stop(self) -> Dict[str, Any]:
+        """
+        Stop monitoring and return statistics.
+        
+        Returns:
+            Dictionary with resource usage statistics
+        """
+        if not PSUTIL_AVAILABLE:
+            return {}
+            
+        self.monitoring = False
+        if self.monitor_thread:
+            self.monitor_thread.join(timeout=1.0)
+        
+        self.end_time = time.time()
+        
+        # Calculate statistics
+        results = {}
+        
+        if self.cpu_samples:
+            results['cpu_usage_mean'] = np.mean(self.cpu_samples)
+            results['cpu_usage_max'] = np.max(self.cpu_samples)
+            results['cpu_usage_min'] = np.min(self.cpu_samples)
+            results['cpu_usage_std'] = np.std(self.cpu_samples)
+        else:
+            results['cpu_usage_mean'] = 0
+            results['cpu_usage_max'] = 0
+            results['cpu_usage_min'] = 0
+            results['cpu_usage_std'] = 0
+        
+        if self.memory_samples:
+            results['memory_usage_mean_mb'] = np.mean(self.memory_samples) / (1024**2)
+            results['memory_usage_max_mb'] = np.max(self.memory_samples) / (1024**2)
+            results['memory_usage_min_mb'] = np.min(self.memory_samples) / (1024**2)
+        else:
+            results['memory_usage_mean_mb'] = 0
+            results['memory_usage_max_mb'] = 0
+            results['memory_usage_min_mb'] = 0
+        
+        # Disk I/O
+        try:
+            final_io = self.process.io_counters()
+            if final_io:
+                results['disk_read_mb'] = (final_io.read_bytes - self.initial_read) / (1024**2)
+                results['disk_write_mb'] = (final_io.write_bytes - self.initial_write) / (1024**2)
+            else:
+                results['disk_read_mb'] = 0
+                results['disk_write_mb'] = 0
+        except:
+            results['disk_read_mb'] = 0
+            results['disk_write_mb'] = 0
+        
+        # Disk usage
+        try:
+            disk_usage = psutil.disk_usage('/')
+            results['disk_usage_mb'] = (disk_usage.used - self.initial_disk_usage) / (1024**2)
+        except:
+            results['disk_usage_mb'] = 0
+        
+        return results
+    
+    def _monitor_loop(self):
+        """Monitor loop running in background thread."""
+        while self.monitoring:
+            try:
+                # CPU usage
+                cpu_percent = self.process.cpu_percent(interval=0.1)
+                self.cpu_samples.append(cpu_percent)
+                
+                # Memory usage
+                memory_info = self.process.memory_info()
+                self.memory_samples.append(memory_info.rss)
+                
+            except Exception:
+                pass
+            
+            time.sleep(0.1)  # Sample every 100ms
+
+
 class VectorSearchBenchmark:
     """
     Benchmark vector search solutions across multiple dimensions.
@@ -98,6 +241,7 @@ class VectorSearchBenchmark:
         self.temp_dir = temp_dir or Path("output/temp")
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.results = {}
+        self.resource_monitor = ResourceMonitor() if PSUTIL_AVAILABLE else None
         logger.info(f"Benchmark initialized with dimension: {dimension}")
     
     def generate_test_data(self, n_vectors: int, seed: int = 42) -> np.ndarray:
@@ -118,6 +262,30 @@ class VectorSearchBenchmark:
         vectors = vectors / norms
         return vectors
     
+    def _run_with_monitoring(self, func, *args, **kwargs) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """
+        Run function with resource monitoring.
+        
+        Args:
+            func: Function to run
+            *args: Arguments for function
+            **kwargs: Keyword arguments for function
+        
+        Returns:
+            Tuple of (function_result, resource_stats)
+        """
+        if self.resource_monitor:
+            self.resource_monitor.start()
+        
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            resource_stats = {}
+            if self.resource_monitor:
+                resource_stats = self.resource_monitor.stop()
+        
+        return result, resource_stats
+    
     def benchmark_faiss(self, vectors: np.ndarray, queries: np.ndarray, k: int = 10) -> Dict[str, Any]:
         """
         Benchmark FAISS (exact search).
@@ -135,11 +303,15 @@ class VectorSearchBenchmark:
         
         results = {}
         
-        # Build index
-        start_time = time.time()
-        index = faiss.IndexFlatIP(self.dimension)  # Inner product for cosine similarity
-        index.add(vectors.astype('float32'))
-        build_time = time.time() - start_time
+        # Build index with monitoring
+        def build_index():
+            start_time = time.time()
+            index = faiss.IndexFlatIP(self.dimension)  # Inner product for cosine similarity
+            index.add(vectors.astype('float32'))
+            build_time = time.time() - start_time
+            return index, build_time
+        
+        index, build_time = build_index()
         results['build_time'] = build_time
         
         # Memory usage (approximate)
@@ -147,12 +319,16 @@ class VectorSearchBenchmark:
         index_size = sys.getsizeof(index) + vectors.nbytes
         results['index_size_mb'] = index_size / (1024**2)
         
-        # Query
-        query_times = []
-        for query in queries:
-            start_time = time.time()
-            distances, indices = index.search(query.reshape(1, -1).astype('float32'), k)
-            query_times.append(time.time() - start_time)
+        # Query with monitoring
+        def run_queries():
+            query_times = []
+            for query in queries:
+                start_time = time.time()
+                distances, indices = index.search(query.reshape(1, -1).astype('float32'), k)
+                query_times.append(time.time() - start_time)
+            return query_times
+        
+        query_times, resource_stats = self._run_with_monitoring(run_queries)
         
         results['query_time_mean'] = np.mean(query_times) * 1000  # ms
         results['query_time_std'] = np.std(query_times) * 1000
@@ -160,6 +336,9 @@ class VectorSearchBenchmark:
         results['query_time_max'] = np.max(query_times) * 1000
         results['queries_per_second'] = 1.0 / np.mean(query_times)
         results['accuracy'] = 1.0  # Exact search
+        
+        # Add resource statistics
+        results.update(resource_stats)
         
         # FAISS does not support metadata filtering or persistence natively
         results['filter_support'] = False
@@ -726,18 +905,20 @@ class VectorSearchBenchmark:
         self,
         dataset_sizes: List[int] = [1000, 10000, 100000],
         n_queries: int = 100,
-        k: int = 10
+        k: int = 10,
+        iterations: int = 1
     ) -> pd.DataFrame:
         """
-        Run comprehensive benchmark across multiple dataset sizes.
+        Run comprehensive benchmark across multiple dataset sizes with multiple iterations.
         
         Args:
             dataset_sizes: List of dataset sizes to test
             n_queries: Number of query vectors
             k: Number of nearest neighbors
+            iterations: Number of iterations to run (for statistical significance)
         
         Returns:
-            DataFrame with benchmark results
+            DataFrame with benchmark results (averaged across iterations)
         """
         all_results = []
         
@@ -746,11 +927,7 @@ class VectorSearchBenchmark:
             logger.info(f"Benchmarking with {n_vectors:,} vectors")
             logger.info(f"{'='*80}")
             
-            # Generate test data
-            vectors = self.generate_test_data(n_vectors)
-            queries = self.generate_test_data(n_queries, seed=123)
-            
-            # Benchmark each method
+            # Benchmark each method with multiple iterations
             methods = [
                 ('FAISS', self.benchmark_faiss),
                 ('NumPy', self.benchmark_numpy),
@@ -765,32 +942,80 @@ class VectorSearchBenchmark:
                     continue
                 
                 try:
-                    logger.info(f"\nBenchmarking {method_name}...")
-                    result = benchmark_func(vectors, queries, k)
+                    logger.info(f"\nBenchmarking {method_name}... (running {iterations} iteration(s))")
                     
-                    if 'error' in result:
-                        logger.warning(f"{method_name}: {result['error']}")
+                    # Run multiple iterations
+                    iteration_results = []
+                    for iteration in range(iterations):
+                        # Generate test data for each iteration (different seed for variation)
+                        vectors = self.generate_test_data(n_vectors, seed=42 + iteration)
+                        queries = self.generate_test_data(n_queries, seed=123 + iteration)
+                        
+                        result = benchmark_func(vectors, queries, k)
+                        
+                        if 'error' in result:
+                            if iteration == 0:  # Only log error on first iteration
+                                logger.warning(f"{method_name}: {result['error']}")
+                            break
+                        
+                        result['iteration'] = iteration
+                        iteration_results.append(result)
+                        
+                        # Cleanup between iterations
+                        gc.collect()
+                    
+                    if not iteration_results:
                         continue
                     
-                    result['method'] = method_name
-                    result['n_vectors'] = n_vectors
-                    result['n_queries'] = n_queries
-                    result['k'] = k
-                    all_results.append(result)
+                    # Aggregate results across iterations
+                    if len(iteration_results) == 1:
+                        aggregated_result = iteration_results[0]
+                    else:
+                        # Average numeric columns, keep non-numeric as-is from first result
+                        aggregated_result = {}
+                        numeric_cols = ['build_time', 'query_time_mean', 'query_time_std', 
+                                       'query_time_min', 'query_time_max', 'queries_per_second',
+                                       'index_size_mb', 'ingestion_time', 'ingestion_rate',
+                                       'cpu_usage_mean', 'cpu_usage_max', 'cpu_usage_min', 'cpu_usage_std',
+                                       'memory_usage_mean_mb', 'memory_usage_max_mb', 'memory_usage_min_mb',
+                                       'disk_read_mb', 'disk_write_mb', 'disk_usage_mb']
+                        
+                        for col in numeric_cols:
+                            if col in iteration_results[0]:
+                                values = [r[col] for r in iteration_results if col in r and pd.notna(r.get(col, 0))]
+                                if values:
+                                    aggregated_result[col] = np.mean(values)
+                        
+                        # Keep non-numeric columns from first result
+                        first_result = iteration_results[0]
+                        for col in first_result:
+                            if col not in numeric_cols and col != 'iteration':
+                                aggregated_result[col] = first_result[col]
                     
-                    logger.info(f"{method_name} Results:")
-                    logger.info(f"  Build time: {result['build_time']:.4f}s")
-                    if 'ingestion_time' in result:
-                        logger.info(f"  Ingestion time: {result['ingestion_time']:.4f}s")
-                        logger.info(f"  Ingestion rate: {result['ingestion_rate']:.1f} vectors/sec")
-                    logger.info(f"  Query time: {result['query_time_mean']:.2f}ms ± {result['query_time_std']:.2f}ms")
-                    logger.info(f"  Queries/sec: {result['queries_per_second']:.1f}")
-                    logger.info(f"  Index size: {result['index_size_mb']:.2f} MB")
-                    if result.get('accuracy') is not None:
-                        logger.info(f"  Accuracy: {result['accuracy']*100:.2f}%")
-                    if result.get('filter_support'):
-                        logger.info(f"  Filter support: Yes (time: {result.get('filter_time', 0):.2f}ms)")
-                    if result.get('persistence'):
+                    aggregated_result['method'] = method_name
+                    aggregated_result['n_vectors'] = n_vectors
+                    aggregated_result['n_queries'] = n_queries
+                    aggregated_result['k'] = k
+                    aggregated_result['iterations'] = len(iteration_results)
+                    all_results.append(aggregated_result)
+                    
+                    logger.info(f"{method_name} Results (averaged over {len(iteration_results)} iterations):")
+                    logger.info(f"  Build time: {aggregated_result['build_time']:.4f}s")
+                    if 'ingestion_time' in aggregated_result:
+                        logger.info(f"  Ingestion time: {aggregated_result['ingestion_time']:.4f}s")
+                        logger.info(f"  Ingestion rate: {aggregated_result['ingestion_rate']:.1f} vectors/sec")
+                    logger.info(f"  Query time: {aggregated_result['query_time_mean']:.2f}ms ± {aggregated_result['query_time_std']:.2f}ms")
+                    logger.info(f"  Queries/sec: {aggregated_result['queries_per_second']:.1f}")
+                    logger.info(f"  Index size: {aggregated_result['index_size_mb']:.2f} MB")
+                    if aggregated_result.get('accuracy') is not None:
+                        logger.info(f"  Accuracy: {aggregated_result['accuracy']*100:.2f}%")
+                    if PSUTIL_AVAILABLE and 'cpu_usage_mean' in aggregated_result:
+                        logger.info(f"  CPU usage: {aggregated_result['cpu_usage_mean']:.1f}% (max: {aggregated_result.get('cpu_usage_max', 0):.1f}%)")
+                        logger.info(f"  Memory usage: {aggregated_result['memory_usage_mean_mb']:.1f} MB (max: {aggregated_result.get('memory_usage_max_mb', 0):.1f} MB)")
+                        logger.info(f"  Disk I/O: {aggregated_result.get('disk_read_mb', 0):.1f} MB read, {aggregated_result.get('disk_write_mb', 0):.1f} MB written")
+                    if aggregated_result.get('filter_support'):
+                        logger.info(f"  Filter support: Yes (time: {aggregated_result.get('filter_time', 0):.2f}ms)")
+                    if aggregated_result.get('persistence'):
                         logger.info(f"  Persistence: Yes")
                     
                 except Exception as e:
@@ -1001,6 +1226,7 @@ def main():
                        help="Dataset sizes to test")
     parser.add_argument("--queries", type=int, default=100, help="Number of query vectors")
     parser.add_argument("--k", type=int, default=10, help="Number of nearest neighbors")
+    parser.add_argument("--iterations", type=int, default=3, help="Number of iterations to run (default: 3)")
     parser.add_argument("--output", type=str, help="Output CSV file for results")
     parser.add_argument("--visualize", action="store_true", help="Generate visualization charts after benchmark")
     
@@ -1022,7 +1248,8 @@ def main():
     df = benchmark.run_comprehensive_benchmark(
         dataset_sizes=args.sizes,
         n_queries=args.queries,
-        k=args.k
+        k=args.k,
+        iterations=args.iterations
     )
     
     # Print results

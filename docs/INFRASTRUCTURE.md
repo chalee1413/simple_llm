@@ -15,7 +15,7 @@ Infrastructure decisions and rationale for the LLM Evaluation Framework.
 - Scalable to millions of vectors
 - Supports L2 and cosine similarity
 - Production-ready library
-- Excellent performance for in-memory operations
+- High performance for in-memory operations
 
 **Trade-offs**:
 - FAISS-CPU sufficient for most use cases
@@ -34,7 +34,7 @@ Infrastructure decisions and rationale for the LLM Evaluation Framework.
 - FAISS: 2.45x faster than NumPy for 10K vectors
 - Query latency: 0.36ms for 10K vectors
 - Scales better than pure NumPy (5.79x vs 15.36x time increase)
-- Best for: In-memory search, high-performance requirements
+- Suitable for: In-memory search, high-performance requirements
 - Limitations: No persistence, no metadata filtering, no database features
 
 **Comparison**: See `vector_search_comparison.py` for comprehensive benchmarks against Qdrant and Chroma.
